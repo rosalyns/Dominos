@@ -6,6 +6,7 @@ pile = map (\(x,(y,z)) -> (x,y,z)) (zip [1..28] pipCombinations)
 pipCombinations :: [(Int, Int)]
 pipCombinations = [(x,y) | x <- [0..6], y <- [x..6]]
 
+--type and data declarations
 data Direction = Hor | Ver
 
 instance Eq Direction where  
@@ -24,6 +25,7 @@ type Solutions = [Board]
 type Pile = [Stone]
 type Row = [Int]
 
+-- sampleBoards used as examples
 sampleBoard :: Board
 sampleBoard = [[5,4,3,6,5,3,4,6],
                [0,6,0,1,2,3,1,1],
@@ -51,22 +53,19 @@ emptyBoard = [[-1,-1,-1,-1,-1,-1,-1,-1],
               [-1,-1,-1,-1,-1,-1,-1,-1],
               [-1,-1,-1,-1,-1,-1,-1,-1]]
 
-wrongBoard :: Board
-wrongBoard = [[-2,-2,-2,-2,-2,-2,-2,-2],
-              [-2,-2,-2,-2,-2,-2,-2,-2],
-              [-2,-2,-2,-2,-2,-2,-2,-2],
-              [-2,-2,-2,-2,-2,-2,-2,-2],
-              [-2,-2,-2,-2,-2,-2,-2,-2],
-              [-2,-2,-2,-2,-2,-2,-2,-2],
-              [-2,-2,-2,-2,-2,-2,-2,-2]]
-
+-- helper functions
 width :: Board -> Int
 width board = length (head board)
 
 height :: Board -> Int
 height board = length board
 
--- showing a board
+x :: (a,b) -> a
+x = fst
+
+y :: (a,b) -> b
+y = snd
+
 show2d :: Int -> String 
 show2d n | length (show n) == 1 = " " ++ (show n)
          | n == -1 = " -"
@@ -74,15 +73,32 @@ show2d n | length (show n) == 1 = " " ++ (show n)
          | otherwise = show n
 
 putBoard :: Board -> IO ()
-putBoard board = sequence_ [putRow row | row <- board]
+putBoard board = do sequence_ [putRow row | row <- board]
+                    putStrLn ""
 
 putRow :: Row -> IO ()
-putRow [] = putStrLn " "
+putRow [] = putStrLn ""
 putRow (x:xs) = do putStr (show2d x) 
                    putStr " "
                    putRow xs
 
+-- not AND
+nand :: Board -> Board -> Board
+nand problem partialSolution = [nandRow row1 row2 | (row1, row2) <- zip problem partialSolution]
 
+nandRow :: Row -> Row -> Row
+nandRow problem partialSolution = [if cell2 == -1 then cell1 else -1 | (cell1, cell2) <- zip problem partialSolution]
+
+-- get the direction of a location
+getDirection :: Location -> Direction
+getDirection (pos1, pos2) | (x pos1 == x pos2) = Ver
+                          | otherwise = Hor
+
+-- get the value on a board from a position
+getValue :: Board -> Pos -> Int
+getValue board (x,y) = (board !! y) !! x
+
+-- implementation functions
 
 -- all possible positions on a board
 positions :: Board -> [Location]
@@ -93,27 +109,14 @@ positions board = hor_locations ++ ver_locations
 -- used to determine what the possibilities are for placing a stone
 fits :: Board -> Stone -> Location -> Bool
 fits board (_,n1,n2) location | n1 == m1 && n2 == m2 = True
-                            | n2 == m1 && n1 == m2 = True
-                            | otherwise = False
-                             where m1 = getValue board (fst location)
-                                   m2 = getValue board (snd location)
-
--- get the value on a board from a position
-getValue :: Board -> Pos -> Int
-getValue board (x,y) = (board !! y) !! x
-
-
--- finds the stone ID corresponding to the pip numbers
--- findStone :: Int -> Int -> Stone
--- findStone x y | x <= y = head (filter (\(a,b,c) -> b == x && c == y) pile)
---               | otherwise = findStone y x
+                              | n2 == m1 && n1 == m2 = True
+                              | otherwise = False
+                               where m1 = getValue board (fst location)
+                                     m2 = getValue board (snd location)
 
 -- gives all the stones + location that only have one possible location
 forcedStones :: Board -> Pile ->[ForcedStone]
 forcedStones board pile = [(stone, head (findLocations board stone))| stone <- pile, length (findLocations board stone) == 1]
-
--- solutions :: Board -> [[(Stone, Location)]]
--- solutions xss = [forcedStones xss pile]
 
 -- calculates one step of the solution
 -- usage: partialSolutions = solve problem partialSolution availableStones
@@ -122,9 +125,10 @@ solve _ [] _ = []
 solve _ solution [] = [solution]
 solve problem partialSolution pile
  | length currentForcedStones > 0 = solve problem (placeForcedStones partialSolution currentForcedStones) (removeUsedStones pile (map fst currentForcedStones))
- | otherwise                      = concat [concat (map ($ (snd particularStoneSolution)) (map (solve problem) (removeDoubles (fst particularStoneSolution)))) | particularStoneSolution <- particularStoneSolutions]
+ | otherwise                      = concat (map ($ (snd particularStoneSolutions)) (map (solve problem) (removeDoubles (fst particularStoneSolutions))))
    where currentForcedStones      = forcedStones (nand problem partialSolution) pile
-         particularStoneSolutions = [(placePossibilities problem partialSolution stone, removeUsedStones pile [stone]) | stone <- pile]
+         particularStoneSolutions = (placePossibilities problem partialSolution stone, removeUsedStones pile [stone])
+         stone                    = head pile
       -- particularStoneSolutions = [(Solutions, Pile)] = [([Board], [Stone])]
 
 
@@ -133,10 +137,20 @@ valid :: Board -> Location -> Bool
 valid board location | getValue board (fst location) == -1 && getValue board (snd location) == -1 = True
                      | otherwise = False
 
--- get the direction of a location
-getDirection :: Location -> Direction
-getDirection (pos1, pos2) | (x pos1 == x pos2) = Ver
-                          | otherwise = Hor
+-- find all possible locations of a stone
+findLocations :: Board -> Stone -> [Location]
+findLocations board stone = filter (fits board stone) (positions board)
+
+placeForcedStones :: Board -> [ForcedStone] -> Board
+placeForcedStones board [] = board
+placeForcedStones board (x:xs) | valid board location = placeForcedStones (placeStone board stone location) xs 
+                               | otherwise = []
+                                where stone = fst x
+                                      location = snd x
+
+-- find intermediate possibilities of a stone
+placePossibilities :: Board -> Board -> Stone -> Solutions
+placePossibilities problem partialSolution stone = map (placeStone partialSolution stone) (findLocations (nand problem partialSolution) stone)
 
 -- makes a copy of the old board where the location is replaced with the new stone
 placeStone :: Board -> Stone -> Location -> Board
@@ -150,43 +164,21 @@ placeStone board stone (pos1,pos2) = before ++ middle ++ after
 
 -- changes the row where the stone is placed
 changedRow :: Row -> Stone -> Pos -> Row
-changedRow row (b,_,_) (x,_) = [row !! col | col <- [0..x-1]] ++ [b] ++ [row !! col | col <- [x+1..(length row)-1]]
-
-placeForcedStones :: Board -> [ForcedStone] -> Board
-placeForcedStones board [] = board
-placeForcedStones board (x:xs) | valid board location = placeForcedStones (placeStone board stone location) xs 
-                               | otherwise = []
-                                where stone = fst x
-                                      location = snd x
-
--- find all possible locations of a stone
-findLocations :: Board -> Stone -> [Location]
-findLocations board stone = filter (fits board stone) (positions board)
-
--- find intermediate possibilities of a stone
-placePossibilities :: Board -> Board -> Stone -> Solutions
-placePossibilities problem partialSolution stone = map (placeStone partialSolution stone) (findLocations (nand problem partialSolution) stone)
+changedRow row (bone,_,_) (x,_) = [row !! col | col <- [0..x-1]] ++ [bone] ++ [row !! col | col <- [x+1..(length row)-1]]
 
 -- remove stones from a pile, return the new pile
 removeUsedStones :: Pile -> Pile -> Pile
 removeUsedStones pile toRemove = filter (\stone -> not (stone `elem` toRemove)) pile
-
-nand :: Board -> Board -> Board
-nand problem partialSolution = [nandRow row1 row2 | (row1, row2) <- zip problem partialSolution]
-
-nandRow :: Row -> Row -> Row
-nandRow problem partialSolution = [if cell2 == -1 then cell1 else -1 | (cell1, cell2) <- zip problem partialSolution]
 
 removeDoubles :: Solutions -> Solutions
 removeDoubles [] = []
 removeDoubles (x:xs) | x `elem` xs = removeDoubles xs
                      | otherwise = (x : removeDoubles xs)
 
-x :: (a,b) -> a
-x = fst
 
-y :: (a,b) -> b
-y = snd
 
 dominos :: Board -> IO ()
-dominos board = sequence_ [putBoard solution | solution <- removeDoubles (solve board emptyBoard pile)]
+dominos board = sequence_ [putBoard solution | solution <- solve board emptyBoard pile]
+
+main :: IO ()
+main = dominos sampleBoard2
