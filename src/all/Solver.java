@@ -4,11 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class Solver {
-	public static List<Board> solve(Board problem, Board partialSolution, Pile pile, int boards) {
-		
-		System.out.println("boards: " + boards);
-		
-		
+	public static List<Board> solve(Board problem, Board partialSolution, Pile pile) {
 		if (!partialSolution.isValid()) {
 			return new ArrayList<Board>();
 		}
@@ -25,13 +21,13 @@ public class Solver {
 			for (ForcedStone fs : currentForcedStones) {
 				pile.removeStone(fs.getStone());
 			}
-			return solve(problem, partialSolution, pile, boards + 1);
+			return solve(problem, partialSolution, pile);
 		} else {
 			List<Board> solutions = new ArrayList<Board>();
 			Stone stone = pile.removeFirst();
 			List<Board> particularStoneSolutions = placePossibilities(problem, partialSolution, stone);
 			for (Board b : particularStoneSolutions) {
-				solutions.addAll(solve(problem, b, pile.deepCopy(), boards + particularStoneSolutions.size()));
+				solutions.addAll(solve(problem, b, pile.deepCopy()));
 			}
 			return solutions;
 		}

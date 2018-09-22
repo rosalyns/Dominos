@@ -77,39 +77,23 @@ public class Main {
 	public static void main(String[] args) {
 		initializeBoard();
 		initializePile();
-	
-		List<Board> solutions = Solver.solve(sampleBoard2, emptyBoard, pile,0);
+		for (String s : args) {
+			System.out.println(s);
+		}
+		Board example = sampleBoard1;
+		if (args.length > 0 && args[0].equals("1")) {
+			example = sampleBoard1;
+		} else if (args.length > 0 && args[0].equals("2")) {
+			example = sampleBoard2;
+		}
+		
+		List<Board> solutions = Solver.solve(example, emptyBoard, pile);
 		System.out.println("Input: ");
-		System.out.println(sampleBoard2.toString());
+		System.out.println(example.toString());
 		System.out.println("Mappings: ");
 		for (Board b : solutions) {
 			System.out.println(b.toString());
 		}
-		
-		
-		
-//		int[][] array2 = {
-//				{1,2},
-//				{2,3}
-//			};
-//		Board smallBoard = new Board(2,2);
-//		smallBoard.initialize(array2);
-//			
-//		Board smallEmptyBoard = new Board(2,2);
-//		smallEmptyBoard.empty();
-//		List<Stone> stones2 = new ArrayList<Stone>();
-//		stones2.add(new Stone(1,1,2));
-//		stones2.add(new Stone(2,2,3));
-//		Pile smallPile = new Pile(stones2);
-//		
-//		List<Board> solutions = Solver.solve(smallBoard, smallEmptyBoard, smallPile);
-//		System.out.println("Input: ");
-//		System.out.println(smallBoard.toString());
-//		System.out.println("Mappings: ");
-//		for (Board b : solutions) {
-//			System.out.println(b.toString());
-//		}
-		
 	}
 
 }
