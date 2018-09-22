@@ -125,12 +125,11 @@ solve _ [] _ = []
 solve _ solution [] = [solution]
 solve problem partialSolution pile
  | length currentForcedStones > 0 = solve problem (placeForcedStones partialSolution currentForcedStones) (removeUsedStones pile (map fst currentForcedStones))
- | otherwise                      = concat (map ($ (snd particularStoneSolutions)) (map (solve problem) (removeDoubles (fst particularStoneSolutions))))
+ | otherwise                      = concat (map ($ newPile) (map (solve problem) particularStoneSolutions))
    where currentForcedStones      = forcedStones (nand problem partialSolution) pile
-         particularStoneSolutions = (placePossibilities problem partialSolution stone, removeUsedStones pile [stone])
+         particularStoneSolutions = placePossibilities problem partialSolution stone
+         newPile                  = removeUsedStones pile [stone]
          stone                    = head pile
-      -- particularStoneSolutions = [(Solutions, Pile)] = [([Board], [Stone])]
-
 
 -- checks if that location is still free
 valid :: Board -> Location -> Bool
@@ -170,15 +169,8 @@ changedRow row (bone,_,_) (x,_) = [row !! col | col <- [0..x-1]] ++ [bone] ++ [r
 removeUsedStones :: Pile -> Pile -> Pile
 removeUsedStones pile toRemove = filter (\stone -> not (stone `elem` toRemove)) pile
 
-removeDoubles :: Solutions -> Solutions
-removeDoubles [] = []
-removeDoubles (x:xs) | x `elem` xs = removeDoubles xs
-                     | otherwise = (x : removeDoubles xs)
-
-
-
 dominos :: Board -> IO ()
 dominos board = sequence_ [putBoard solution | solution <- solve board emptyBoard pile]
 
 main :: IO ()
-main = dominos sampleBoard2
+main = dominos sampleBoard

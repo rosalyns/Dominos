@@ -4,22 +4,51 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class Solver {
-
-	private Board problem;
-	private Pile startingPile;
-	private List<Board> solutions;
-	
-	public Solver(Board problem, Pile pile) {
-		this.problem = problem;
-		this.startingPile = pile;
-		this.solutions = new ArrayList<Board>();
-	}
-	
-	public List<Board> solve() {
+	public static List<Board> solve(Board problem, Board partialSolution, Pile pile, int boards) {
 		
+		System.out.println("boards: " + boards);
+		
+		
+		if (!partialSolution.isValid()) {
+			return new ArrayList<Board>();
+		}
+		
+		if (pile.getStones().isEmpty()) {
+			List<Board> solutions = new ArrayList<Board>();
+			solutions.add(partialSolution);
+			return solutions;
+		}
+		
+		List<ForcedStone> currentForcedStones = forcedStones(problem.nand(partialSolution), pile);
+		if (currentForcedStones.size() > 0) {
+			placeForcedStones(partialSolution, currentForcedStones);
+			for (ForcedStone fs : currentForcedStones) {
+				pile.removeStone(fs.getStone());
+			}
+			return solve(problem, partialSolution, pile, boards + 1);
+		} else {
+			List<Board> solutions = new ArrayList<Board>();
+			Stone stone = pile.removeFirst();
+			List<Board> particularStoneSolutions = placePossibilities(problem, partialSolution, stone);
+			for (Board b : particularStoneSolutions) {
+				solutions.addAll(solve(problem, b, pile.deepCopy(), boards + particularStoneSolutions.size()));
+			}
+			return solutions;
+		}
 	}
 	
-	private List<ForcedStone> findForcedStones(Board b, Pile p) {
+	private static List<Board> placePossibilities(Board problem, Board partialSolution, Stone stone) {
+		List<Board> solutions = new ArrayList<Board>();
+		List<Location> locs = findLocations(problem.nand(partialSolution), stone);
+		for (Location loc : locs) {
+			Board copy = partialSolution.deepCopy();
+			copy.placeStone(stone, loc);
+			solutions.add(copy);
+		}
+		return solutions;
+	}
+	
+	private static List<ForcedStone> forcedStones(Board b, Pile p) {
 		List<ForcedStone> fs = new ArrayList<>();
 		for (Stone s : p.getStones()) {
 			List<Location> locs = findLocations(b, s);
@@ -30,7 +59,7 @@ public class Solver {
 		return fs;
 	}
 	
-	private List<Location> findLocations(Board b, Stone s) {
+	private static List<Location> findLocations(Board b, Stone s) {
 		List<Location> locs = new ArrayList<Location>();
 		for (Location l : b.positions()) {
 			if (b.fits(l, s)) {
@@ -38,6 +67,16 @@ public class Solver {
 			}
 		}
 		return locs;
+	}
+	
+	private static void placeForcedStones(Board b, List<ForcedStone> fs) {
+		for (ForcedStone forcedStone : fs) {
+			if (b.valid(forcedStone.getLocation())) {
+				b.placeStone(forcedStone.getStone(), forcedStone.getLocation());
+			} else {
+				b.setValidity(false);
+			}
+		}
 	}
 
 }

@@ -23,16 +23,4 @@ public class Stone {
 	public int getPip2() {
 		return pip2;
 	}
-
-	public void setId(int id) {
-		this.id = id;
-	}
-
-	public void setPip1(int pip1) {
-		this.pip1 = pip1;
-	}
-
-	public void setPip2(int pip2) {
-		this.pip2 = pip2;
-	}
 }
